@@ -108,6 +108,9 @@ function backup() {
 																# send any previous snapshots
 																/usr/sbin/zfs send -R${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
 																}
+		else
+			# ensure this does not remain in effect
+			unset SNAPMODIFIER R_SNAPMODIFIER
 	fi
 	
 	# send backup
