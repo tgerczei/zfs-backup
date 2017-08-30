@@ -16,18 +16,7 @@ function check_dataset() {
 }
 
 function snapuse() {
-	# whee
-	local TOTAL=0
-	while read value
-		do
-			if [[ $value =~ ^[0-9] ]]
-				then
-					TOTAL=$(( $TOTAL + $value ))
-			fi
-		done \
-			 <<< "$(${R_RMOD} /usr/sbin/zfs get -Hpro value usedbysnapshots ${1} 2>/dev/null)"
-
-	echo $TOTAL
+	 ${R_RMOD} /usr/sbin/zfs get -Hpo value usedbysnapshots ${1}
 }
 
 function human() {
