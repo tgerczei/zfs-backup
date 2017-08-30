@@ -143,7 +143,7 @@ function backup() {
 
 			if [ $_DELTA -lt 0 ]
 				then
-					_DELTA=$(( _$DELTA * -1 ))
+					_DELTA=$(( $_DELTA * -1 ))
 					WHAT="freed"
 			fi
 
