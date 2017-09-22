@@ -71,7 +71,7 @@ function backup() {
 								}
 
 	R_SNAPSHOTS=( $(${R_RMOD} /usr/sbin/zfs list -rt snapshot -d1 -Ho name -S creation ${SAVETO}/$( basename ${DATASET}) 2>/dev/null) )
-	R_USED_BEFORE=$(snapuse ${SAVETO}/$( basename ${DATASET}))
+	check_dataset ${SAVETO}/$( basename ${DATASET}) && R_USED_BEFORE=$(snapuse ${SAVETO}/$( basename ${DATASET}))
 
 	# determine current timestamp
 	DATE=$(date +%Y-%m-%d-%H%M)
@@ -134,7 +134,7 @@ function backup() {
 			
 	R_USED_AFTER=$(snapuse ${SAVETO}/$( basename ${DATASET}))
 	L_DELTA=$(( $L_USED_AFTER - $L_USED_BEFORE ))
-	R_DELTA=$(( $R_USED_AFTER - $R_USED_BEFORE ))
+	R_DELTA=$(( $R_USED_AFTER - ${R_USED_BEFORE:-0} ))
 
 	for DELTA in L_DELTA R_DELTA
 		do
