@@ -82,6 +82,18 @@ function backup() {
 	# take a snapshot
 	/usr/sbin/zfs snapshot -r ${NEWSNAP}
 	
+	# check if source is encrypted
+	if [ $ENCRYPTION_FEATURE != "disabled" ]
+		then
+			# encryption feature available
+			ENCRYPTION=$(/usr/sbin/zfs get -Ho value encryption ${DATASET})
+			if [[ ${ENCRYPTION} != "off" ]]
+				then
+					# encryption in use, send raw stream
+					RAW_MOD="w"
+			fi
+	fi
+
 	# determine whether to do differential send or not
 	if [ ! -z ${LASTSNAP} ]
 		then
@@ -95,7 +107,7 @@ function backup() {
 																		R_SNAPMODIFIER="I $(dirname ${DATASET})/$(basename ${R_SNAPSHOTS[*]:(-1)})"
 																fi
 																# send any previous snapshots
-																/usr/sbin/zfs send -R${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
+																/usr/sbin/zfs send -R${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
 																}
 		else
 			# ensure this does not remain in effect
@@ -103,7 +115,7 @@ function backup() {
 	fi
 	
 	# send backup
-	/usr/sbin/zfs send -R${SNAPMODIFIER} ${NEWSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
+	/usr/sbin/zfs send -R${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
 	
 	# if replication is unsuccessful, omit the aging check so as to prevent data loss
 	if [ $? -eq 0 ]
@@ -162,7 +174,7 @@ function backup() {
 		done
 
 	# reset remote configuration
-    unset R_RMOD RMOD
+	unset R_RMOD RMOD RAW_MOD
 }
 
 #### END FUNCTIONS ####
@@ -173,7 +185,7 @@ while getopts hf:m: OPTION
 	do
 		case "$OPTION" in
 			f)
-				# configuration file for install mode
+				# configuration file
 				CFGFILE="$OPTARG"
 				;;
 
@@ -211,6 +223,15 @@ if [[ "$PLATFORM_VERSION" =~ ^joyent ]]
 	then
 		# SmartOS GZ has GNU date shipped by default but no perl interpreter on-board
 		TIMECMD="\$(date +%s)"
+		# determine pool name
+		POOL_NAME=$(/usr/bin/sysinfo | /usr/bin/json Zpool)
+		ENCRYPTION_FEATURE=$(/usr/sbin/zpool get -Ho value feature@encryption ${POOL_NAME})
+		if [ $? -ne 0 ]
+			then
+				# feature unknown, outdated PI
+				logger -t $(basename ${0%.sh}) -p user.notice "ZFS encryption is not supported on $PLATFORM_VERSION"
+				ENCRYPTION_FEATURE="disabled"
+		fi
 fi
 
 # determine current timestamp
