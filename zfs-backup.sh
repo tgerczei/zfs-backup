@@ -107,7 +107,7 @@ function backup() {
 																		R_SNAPMODIFIER="I $(dirname ${DATASET})/$(basename ${R_SNAPSHOTS[*]:(-1)})"
 																fi
 																# send any previous snapshots
-																/usr/sbin/zfs send -R${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
+																/usr/sbin/zfs send -R${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 																}
 		else
 			# ensure this does not remain in effect
@@ -115,7 +115,7 @@ function backup() {
 	fi
 	
 	# send backup
-	/usr/sbin/zfs send -R${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD} /usr/sbin/zfs recv -Feuv ${SAVETO} 2>&1 >> ${LOGFILE}
+	/usr/sbin/zfs send -R${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD} /usr/sbin/zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 	
 	# if replication is unsuccessful, omit the aging check so as to prevent data loss
 	if [ $? -eq 0 ]
@@ -232,6 +232,21 @@ if [[ "$PLATFORM_VERSION" =~ ^joyent ]]
 				# feature unknown, outdated PI
 				logger -t $(basename ${0%.sh}) -p user.notice "ZFS encryption is not supported on $PLATFORM_VERSION"
 				ENCRYPTION_FEATURE="disabled"
+		fi
+
+		EXTENSION_FEATURE=$(/usr/sbin/zpool get -Ho value feature@extensible_dataset ${POOL_NAME})
+		if [ $? -ne 0 ]
+			then
+				# feature unknown, outdated PI
+				logger -t $(basename ${0%.sh}) -p user.notice "extensible datasets are not supported on $PLATFORM_VERSION"
+				EXTENSION_FEATURE="disabled"
+			else
+				# check if resuming is supported
+				if [ $EXTENSION_FEATURE == "active" ]
+					then
+						# extensible_dataset feature available
+						RESUME_MOD="s"
+				fi
 		fi
 fi
 
