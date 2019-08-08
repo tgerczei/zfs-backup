@@ -269,7 +269,12 @@ while read -u 4 DATASET SAVETO KEEP ENABLED
 if [ ! -z "${RECIPIENT}" ]
 	then
 		# report the outcome by e-mailing the session log
-		mailx -s "${ME}_${RUNDATE}" ${RECIPIENT} < ${LOGFILE}
+		sendmail ${RECIPIENT} <<- EOF
+			Subject: ${ME}_${RUNDATE}
+			Auto-Submitted: auto-generated
+
+			$(cat ${LOGFILE})
+			EOF
 fi
 
 #### END LOGIC ####
