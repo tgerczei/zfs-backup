@@ -132,7 +132,8 @@ function backup() {
 					fi
 				done
 		else
-			logger -t $(basename ${0%.sh}) -p user.notice "failed to replicate ${NEWSNAP} to ${TARGET}:${SAVETO}, no aging"
+			MY_EXIT_CODE=$?
+			logger -t $(basename ${0%.sh}) -p user.notice "failed to replicate ${NEWSNAP} (rc: $MY_EXIT_CODE) to ${TARGET:-local}:${SAVETO}, no aging"
 	fi
 
 	# re-evaluate snapshot data usage
