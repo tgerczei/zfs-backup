@@ -11,12 +11,12 @@ A configuration (f)ile must be supplied. An e-(m)ail address for reporting is op
 }
 
 function check_dataset() {
-	${R_RMOD} /usr/sbin/zfs get -pHo value creation ${1} &>/dev/null
+	${R_RMOD} zfs get -pHo value creation ${1} &>/dev/null
 	return $?
 }
 
 function snapuse() {
-	 ${R_RMOD} /usr/sbin/zfs get -Hpo value usedbysnapshots ${1}
+	 ${R_RMOD} zfs get -Hpo value usedbysnapshots ${1}
 }
 
 function human() {
@@ -36,7 +36,7 @@ function backup() {
 								}
 
 	# determine which local snapshots exist already
-	SNAPSHOTS=( $(/usr/sbin/zfs list -rt snapshot -d1 -Ho name -S creation ${DATASET} 2>/dev/null) )
+	SNAPSHOTS=( $(zfs list -rt snapshot -d1 -Ho name -S creation ${DATASET} 2>/dev/null) )
 	LASTSNAP=${SNAPSHOTS[0]}
 	L_USED_BEFORE=$(snapuse ${DATASET})
 
@@ -60,7 +60,10 @@ function backup() {
 		else
 			# configure for remote access
 			R_RMOD="ssh ${USER}@${TARGET}"
-			RMOD="${R_RMOD} sudo"
+			if [ $USER != 'root' ]
+				then
+					RMOD="${R_RMOD} sudo"
+			fi
 		fi
 	fi
 
@@ -70,7 +73,7 @@ function backup() {
 								continue 2
 								}
 
-	R_SNAPSHOTS=( $(${R_RMOD} /usr/sbin/zfs list -rt snapshot -d1 -Ho name -S creation ${SAVETO}/$( basename ${DATASET}) 2>/dev/null) )
+	R_SNAPSHOTS=( $(${R_RMOD} zfs list -rt snapshot -d1 -Ho name -S creation ${SAVETO}/$( basename ${DATASET}) 2>/dev/null) )
 	check_dataset ${SAVETO}/$( basename ${DATASET}) && R_USED_BEFORE=$(snapuse ${SAVETO}/$( basename ${DATASET}))
 
 	# determine current timestamp
@@ -80,13 +83,13 @@ function backup() {
 	NEWSNAP="${DATASET}@${DATE}"
 	
 	# take a snapshot
-	/usr/sbin/zfs snapshot -r ${NEWSNAP}
+	zfs snapshot -r ${NEWSNAP}
 	
 	# check if source is encrypted
 	if [ $ENCRYPTION_FEATURE != "disabled" ]
 		then
 			# encryption feature available
-			ENCRYPTION=$(/usr/sbin/zfs get -Ho value encryption ${DATASET})
+			ENCRYPTION=$(zfs get -Ho value encryption ${DATASET})
 			if [[ ${ENCRYPTION} != "off" ]]
 				then
 					# encryption in use, send raw stream
@@ -107,7 +110,7 @@ function backup() {
 																		R_SNAPMODIFIER="I $(dirname ${DATASET})/$(basename ${R_SNAPSHOTS[*]:(-1)})"
 																fi
 																# send any previous snapshots
-																/usr/sbin/zfs send -R${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD} /usr/sbin/zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
+																zfs send -Rv${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 																}
 		else
 			# ensure this does not remain in effect
@@ -115,7 +118,7 @@ function backup() {
 	fi
 	
 	# send backup
-	/usr/sbin/zfs send -R${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD} /usr/sbin/zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
+	zfs send -Rv${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 	
 	# if replication is unsuccessful, omit the aging check so as to prevent data loss
 	if [ $? -eq 0 ]
@@ -123,12 +126,12 @@ function backup() {
 			THRESHOLD=$(( $KEEP * 24 * 3600 ))
 			for SNAPSHOT in ${SNAPSHOTS[*]}
 				do
-					TIMESTAMP=$(/usr/sbin/zfs get -pHo value creation "${SNAPSHOT}")
+					TIMESTAMP=$(zfs get -pHo value creation "${SNAPSHOT}")
 					AGE=$(( $NOW - $TIMESTAMP ))
 					if [ $AGE -ge $THRESHOLD ]
 						then
-							/usr/sbin/zfs destroy -r ${SNAPSHOT} 2>&1 >> ${LOGFILE}
-							${RMOD} /usr/sbin/zfs destroy -r ${SAVETO}/$(basename ${SNAPSHOT}) 2>&1 >> ${LOGFILE}
+							zfs destroy -r ${SNAPSHOT} 2>&1 >> ${LOGFILE}
+							${RMOD:-$R_RMOD} zfs destroy -r ${SAVETO}/$(basename ${SNAPSHOT}) 2>&1 >> ${LOGFILE}
 					fi
 				done
 		else
