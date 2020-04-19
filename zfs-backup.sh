@@ -110,7 +110,7 @@ function backup() {
 																		R_SNAPMODIFIER="I $(dirname ${DATASET})/$(basename ${R_SNAPSHOTS[*]:(-1)})"
 																fi
 																# send any previous snapshots
-																zfs send -Rv${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
+																zfs send -Rcv${RAW_MOD}${R_SNAPMODIFIER} ${LASTSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 																}
 		else
 			# ensure this does not remain in effect
@@ -118,7 +118,7 @@ function backup() {
 	fi
 	
 	# send backup
-	zfs send -Rv${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
+	zfs send -Rcv${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
 	
 	# if replication is unsuccessful, omit the aging check so as to prevent data loss
 	if [ $? -eq 0 ]
