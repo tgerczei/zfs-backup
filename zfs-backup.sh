@@ -76,7 +76,7 @@ function backup() {
 	R_SNAPSHOTS=( $(${R_RMOD} zfs list -rt snapshot -d1 -Ho name -S creation ${SAVETO}/$( basename ${DATASET}) 2>/dev/null) )
 	check_dataset ${SAVETO}/$( basename ${DATASET}) && R_USED_BEFORE=$(snapuse ${SAVETO}/$( basename ${DATASET}))
 
-	if [ ${MODE:-backup} == "backup" ]
+	if [ $MODE == "backup" ]
 		then
 			# determine current timestamp
 			DATE=$(date +%Y-%m-%d-%H%M)
@@ -127,7 +127,7 @@ function backup() {
 			unset SNAPMODIFIER R_SNAPMODIFIER
 	fi
 	
-	if [ ${MODE:-backup} == "backup" ]
+	if [ $MODE == "backup" ]
 		then
 			# send backup
 			zfs send -Rcv${RAW_MOD}${SNAPMODIFIER} ${NEWSNAP} | ${RMOD:-$R_RMOD} zfs recv -Feu${RESUME_MOD}v ${SAVETO} 2>&1 >> ${LOGFILE}
@@ -202,7 +202,7 @@ function backup() {
 
 #### BEGIN LOGIC ####
 
-while getopts hf:m:s OPTION
+while getopts hf:m: OPTION
 	do
 		case "$OPTION" in
 			f)
@@ -213,11 +213,6 @@ while getopts hf:m:s OPTION
 			m)
 				# e-mail recipient for log
 				RECIPIENT="$OPTARG"
-				;;
-
-			s)
-				# sync mode | this could also be a per-target setting to mitigate the need to call multiple jobs
-				MODE="sync"
 				;;
 
 			h|\?)
@@ -296,7 +291,7 @@ LOGDIR="/var/log"
 # determine session logfile
 LOGFILE="${LOGDIR:-/tmp}/${ME}_${RUNDATE}.txt"
 
-while read -u 4 DATASET SAVETO KEEP ENABLED
+while read -u 4 DATASET SAVETO KEEP MODE ENABLED
 	# alternate file descriptor in use because SSH might be involved and we can not pass '-n' to it because we need stdin for 'zfs recv'
 	do
 		let COUNTER++
